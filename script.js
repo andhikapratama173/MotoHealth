@@ -26,31 +26,45 @@ const btnOpenAdd = document.getElementById('btn-open-add-modal');
 const btnOpenService = document.getElementById('btn-open-service-modal');
 const serviceCompSelect = document.getElementById('service-comp-select');
 
-// Helper Close All Modals
-function closeAllModals() {
-  modalAdd.classList.add('hidden');
-  modalAdd.classList.remove('flex');
-  modalService.classList.add('hidden');
-  modalService.classList.remove('flex');
+// Helper Show / Hide Modal Functions
+function openModal(modalEl) {
+  if (!modalEl) return;
+  modalEl.style.display = 'flex';
 }
 
-// Initial Load
-currentOdoInput.value = odometer;
-renderComponents();
-renderHistory();
+function closeModal(modalEl) {
+  if (!modalEl) return;
+  modalEl.style.display = 'none';
+}
+
+function closeAllModals() {
+  closeModal(modalAdd);
+  closeModal(modalService);
+}
+
+// Initial Setup & Load
+document.addEventListener('DOMContentLoaded', () => {
+  if (currentOdoInput) currentOdoInput.value = odometer;
+  renderComponents();
+  renderHistory();
+  closeAllModals(); // Pastikan modal tersembunyi sejak awal secara pasti
+});
 
 // Update Odometer Event
-btnUpdateOdo.addEventListener('click', () => {
-  const val = parseInt(currentOdoInput.value);
-  if (!isNaN(val) && val >= 0) {
-    odometer = val;
-    localStorage.setItem('moto_odo', odometer);
-    renderComponents();
-  }
-});
+if (btnUpdateOdo) {
+  btnUpdateOdo.addEventListener('click', () => {
+    const val = parseInt(currentOdoInput.value);
+    if (!isNaN(val) && val >= 0) {
+      odometer = val;
+      localStorage.setItem('moto_odo', odometer);
+      renderComponents();
+    }
+  });
+}
 
 // Render Components Card List
 function renderComponents() {
+  if (!componentContainer) return;
   componentContainer.innerHTML = '';
   
   components.forEach(comp => {
@@ -130,6 +144,7 @@ function deleteComponent(id) {
 
 // Render Service History Table
 function renderHistory() {
+  if (!historyList) return;
   historyList.innerHTML = '';
   if (history.length === 0) {
     historyList.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-500">Belum ada riwayat penggantian.</td></tr>`;
@@ -149,67 +164,89 @@ function renderHistory() {
   });
 }
 
-// Modal Control Event Listeners
-btnOpenAdd.addEventListener('click', () => {
-  modalAdd.classList.remove('hidden');
-  modalAdd.classList.add('flex');
-});
+// Event Buka Modal Tambah Komponen
+if (btnOpenAdd) {
+  btnOpenAdd.addEventListener('click', () => {
+    openModal(modalAdd);
+  });
+}
 
-btnOpenService.addEventListener('click', () => {
-  serviceCompSelect.innerHTML = components.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-  document.getElementById('service-km').value = odometer;
-  modalService.classList.remove('hidden');
-  modalService.classList.add('flex');
-});
+// Event Buka Modal Catat Servis
+if (btnOpenService) {
+  btnOpenService.addEventListener('click', () => {
+    if (serviceCompSelect) {
+      serviceCompSelect.innerHTML = components.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    }
+    const serviceKmInput = document.getElementById('service-km');
+    if (serviceKmInput) serviceKmInput.value = odometer;
+    openModal(modalService);
+  });
+}
 
+// Event Tutup Modal untuk Semua Tombol Batal / Silang
 document.querySelectorAll('.btn-close-modal').forEach(btn => {
   btn.addEventListener('click', closeAllModals);
 });
 
-// Form Submit: Add New Component
-document.getElementById('form-add-component').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const name = document.getElementById('new-comp-name').value;
-  const interval = parseInt(document.getElementById('new-comp-interval').value);
-  const lastKm = parseInt(document.getElementById('new-comp-last-km').value);
+// Form Submit: Tambah Komponen
+const formAdd = document.getElementById('form-add-component');
+if (formAdd) {
+  formAdd.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = document.getElementById('new-comp-name').value;
+    const interval = parseInt(document.getElementById('new-comp-interval').value);
+    const lastKm = parseInt(document.getElementById('new-comp-last-km').value);
 
-  const newComp = {
-    id: Date.now().toString(),
-    name: name,
-    interval: interval,
-    lastChangedKm: lastKm
-  };
-
-  components.push(newComp);
-  localStorage.setItem('moto_components', JSON.stringify(components));
-  renderComponents();
-  
-  e.target.reset();
-  closeAllModals();
-});
-
-// Form Submit: Record Service Replacement
-document.getElementById('form-service').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const compId = serviceCompSelect.value;
-  const km = parseInt(document.getElementById('service-km').value);
-  const note = document.getElementById('service-note').value;
-
-  const targetComp = components.find(c => c.id === compId);
-  if (targetComp) {
-    targetComp.lastChangedKm = km;
-    localStorage.setItem('moto_components', JSON.stringify(components));
-    
-    const historyItem = {
-      date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-      compName: targetComp.name,
-      km: km,
-      note: note
+    const newComp = {
+      id: Date.now().toString(),
+      name: name,
+      interval: interval,
+      lastChangedKm: lastKm
     };
-    history.push(historyItem);
-    localStorage.setItem('moto_history', JSON.stringify(history));
 
-    if (km > odometer) {
-      odometer = km;
-      currentOdoInput.value = odometer;
-      localStorage.setItem('moto_odo', odometer);
+    components.push(newComp);
+    localStorage.setItem('moto_components', JSON.stringify(components));
+    renderComponents();
+    
+    e.target.reset();
+    closeAllModals();
+  });
+}
+
+// Form Submit: Catat Penggantian Servis
+const formService = document.getElementById('form-service');
+if (formService) {
+  formService.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const compId = serviceCompSelect.value;
+    const km = parseInt(document.getElementById('service-km').value);
+    const note = document.getElementById('service-note').value;
+
+    const targetComp = components.find(c => c.id === compId);
+    if (targetComp) {
+      targetComp.lastChangedKm = km;
+      localStorage.setItem('moto_components', JSON.stringify(components));
+      
+      const historyItem = {
+        date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+        compName: targetComp.name,
+        km: km,
+        note: note
+      };
+      history.push(historyItem);
+      localStorage.setItem('moto_history', JSON.stringify(history));
+
+      if (km > odometer) {
+        odometer = km;
+        if (currentOdoInput) currentOdoInput.value = odometer;
+        localStorage.setItem('moto_odo', odometer);
+      }
+
+      renderComponents();
+      renderHistory();
+    }
+
+    e.target.reset();
+    closeAllModals();
+  });
+}
