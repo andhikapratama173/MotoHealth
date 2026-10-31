@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MotoCheck PCX/ADV - Tracker Servis Motor Matic</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- CSS External File -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header class="app-header">
+        <div class="container header-container">
+            <div class="brand-logo">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-motorcycle"></i>
+                </div>
+                <div>
+                    <h1 class="brand-title">MotoCheck <span>PCX / ADV</span></h1>
+                    <p class="brand-subtitle">Monitoring Kesehatan & Servis Matic</p>
+                </div>
+            </div>
+
+            <div class="odo-box">
+                <i class="fa-solid fa-gauge-high odo-icon"></i>
+                <div class="odo-input-wrapper">
+                    <label for="currentOdoInput">Odo Saat Ini:</label>
+                    <input type="number" id="currentOdoInput" placeholder="0" min="0">
+                    <span class="unit">KM</span>
+                </div>
+                <button onclick="updateOdometer()" class="btn btn-primary btn-sm">Simpan</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container main-content">
+
+        <!-- Quick Summary Stats -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon icon-sky"><i class="fa-solid fa-road"></i></div>
+                <div>
+                    <span class="stat-label">Odometer Saat Ini</span>
+                    <h3 class="stat-value" id="summaryOdo">0 <small>KM</small></h3>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon icon-green"><i class="fa-solid fa-circle-check"></i></div>
+                <div>
+                    <span class="stat-label">Kondisi Prima</span>
+                    <h3 class="stat-value text-green" id="summaryGood">0 <small>Part</small></h3>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon icon-amber"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div>
+                    <span class="stat-label">Perlu Persiapan</span>
+                    <h3 class="stat-value text-amber" id="summaryWarning">0 <small>Part</small></h3>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon icon-red"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+                <div>
+                    <span class="stat-label">Wajib Ganti</span>
+                    <h3 class="stat-value text-red" id="summaryDanger">0 <small>Part</small></h3>
+                </div>
+            </div>
+        </section>
+
+        <!-- Components Grid -->
+        <section class="section">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title"><i class="fa-solid fa-layer-group"></i> Status Komponen Sparepart</h2>
+                    <p class="section-desc">Interval penggantian disesuaikan untuk tipe Matic Bongsor (PCX/ADV/NMAX)</p>
+                </div>
+            </div>
+
+            <div id="componentsContainer" class="components-grid">
+                <!-- Data Komponen Dimuat via Script.js -->
+            </div>
+        </section>
+
+        <!-- History Log Section -->
+        <section class="section history-section">
+            <div class="section-header space-between">
+                <div>
+                    <h2 class="section-title"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Penggantian Part</h2>
+                    <p class="section-desc">Catatan historis pergantian suku cadang yang telah disimpan</p>
+                </div>
+                <button onclick="clearHistory()" class="btn btn-danger-ghost btn-sm">
+                    <i class="fa-solid fa-trash-can"></i> Hapus Riwayat
+                </button>
+            </div>
+
+            <div class="table-wrapper">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Komponen</th>
+                            <th>Pada Odometer</th>
+                            <th>Catatan / Brand</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        <!-- Data Riwayat Dimuat via Script.js -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Form Service -->
+    <div id="serviceModal" class="modal-backdrop">
+        <div class="modal-card">
+            <button onclick="closeServiceModal()" class="modal-close">&times;</button>
+            
+            <h3 class="modal-title">Catat Penggantian Part</h3>
+            <p class="modal-desc">Perbarui KM saat komponen ini diganti baru.</p>
+
+            <form id="serviceForm" onsubmit="handleServiceSubmit(event)">
+                <input type="hidden" id="modalPartId">
+                
+                <div class="form-group">
+                    <label>Nama Sparepart</label>
+                    <input type="text" id="modalPartName" disabled class="input-disabled">
+                </div>
+
+                <div class="form-group">
+                    <label>Diganti Pada Odometer (KM)</label>
+                    <input type="number" id="modalPartKm" required min="0">
+                    <small class="form-hint">*Otomatis terisi nilai Odometer saat ini</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Catatan / Merk Sparepart (Opsional)</label>
+                    <input type="text" id="modalNotes" placeholder="Misal: Shell Advance 10W-40 / Roller 15 Gram">
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" onclick="closeServiceModal()" class="btn btn-secondary">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan Data</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- JavaScript External File -->
+    <script src="script.js"></script>
+</body>
+</html>
