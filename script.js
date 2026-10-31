@@ -1,278 +1,210 @@
-// Data Interval Standar Pabrikan untuk Motor Matic Bongsor (PCX, ADV, NMAX, dll)
+// Default Components Data
 const defaultComponents = [
-    { id: 'oli_mesin', name: 'Oli Mesin', interval: 3000, lastReplacedKm: 0, icon: 'fa-oil-can' },
-    { id: 'oli_gardan', name: 'Oli Gardan / Transmisi', interval: 8000, lastReplacedKm: 0, icon: 'fa-gears' },
-    { id: 'busi', name: 'Busi', interval: 8000, lastReplacedKm: 0, icon: 'fa-bolt' },
-    { id: 'roller_slider', name: 'Roller & Slider CVT', interval: 12000, lastReplacedKm: 0, icon: 'fa-circle-dot' },
-    { id: 'filter_udara', name: 'Filter Udara', interval: 12000, lastReplacedKm: 0, icon: 'fa-wind' },
-    { id: 'kampas_rem', name: 'Kampas Rem (Depan/Belakang)', interval: 15000, lastReplacedKm: 0, icon: 'fa-shield-halved' },
-    { id: 'minyak_rem', name: 'Minyak Rem', interval: 20000, lastReplacedKm: 0, icon: 'fa-bottle-droplet' },
-    { id: 'vbelt', name: 'V-Belt CVT', interval: 24000, lastReplacedKm: 0, icon: 'fa-infinity' }
+  { id: '1', name: 'Oli Mesin', interval: 3000, lastChangedKm: 0 },
+  { id: '2', name: 'Oli Gardan', interval: 8000, lastChangedKm: 0 },
+  { id: '3', name: 'Roller CVT', interval: 12000, lastChangedKm: 0 },
+  { id: '4', name: 'V-Belt', interval: 24000, lastChangedKm: 0 },
+  { id: '5', name: 'Busi', interval: 8000, lastChangedKm: 0 },
+  { id: '6', name: 'Filter Udara', interval: 16000, lastChangedKm: 0 }
 ];
 
-// State Variabel Aplikasi
-let currentOdo = 0;
-let components = [];
-let historyLogs = [];
+// App State
+let odometer = parseInt(localStorage.getItem('moto_odo')) || 0;
+let components = JSON.parse(localStorage.getItem('moto_components')) || defaultComponents;
+let history = JSON.parse(localStorage.getItem('moto_history')) || [];
 
-// Inisialisasi saat aplikasi pertama kali dimuat
-function initApp() {
-    const savedOdo = localStorage.getItem('moto_currentOdo');
-    currentOdo = savedOdo ? parseInt(savedOdo, 10) : 0;
+// DOM Elements
+const currentOdoInput = document.getElementById('current-odometer');
+const btnUpdateOdo = document.getElementById('btn-update-odo');
+const componentContainer = document.getElementById('component-container');
+const historyList = document.getElementById('history-list');
 
-    const savedComponents = localStorage.getItem('moto_components');
-    components = savedComponents ? JSON.parse(savedComponents) : defaultComponents;
+// Modal Elements
+const modalAdd = document.getElementById('modal-add-component');
+const modalService = document.getElementById('modal-service');
+const btnOpenAdd = document.getElementById('btn-open-add-modal');
+const btnOpenService = document.getElementById('btn-open-service-modal');
+const serviceCompSelect = document.getElementById('service-comp-select');
 
-    const savedHistory = localStorage.getItem('moto_history');
-    historyLogs = savedHistory ? JSON.parse(savedHistory) : [];
+// Initial Load
+currentOdoInput.value = odometer;
+renderComponents();
+renderHistory();
 
-    document.getElementById('currentOdoInput').value = currentOdo;
-    render();
-}
+// Update Odometer Event
+btnUpdateOdo.addEventListener('click', () => {
+  const val = parseInt(currentOdoInput.value);
+  if (!isNaN(val) && val >= 0) {
+    odometer = val;
+    localStorage.setItem('moto_odo', odometer);
+    renderComponents();
+  }
+});
 
-// Simpan state ke LocalStorage
-function saveData() {
-    localStorage.setItem('moto_currentOdo', currentOdo);
-    localStorage.setItem('moto_components', JSON.stringify(components));
-    localStorage.setItem('moto_history', JSON.stringify(historyLogs));
-}
-
-// Perbarui Odometer Utama
-function updateOdometer() {
-    const inputVal = document.getElementById('currentOdoInput').value;
-    const newOdo = parseInt(inputVal, 10);
-
-    if (isNaN(newOdo) || newOdo < 0) {
-        showToast('Masukkan KM Odometer yang valid!', 'error');
-        return;
-    }
-
-    currentOdo = newOdo;
-    saveData();
-    render();
-    showToast('Odometer berhasil diperbarui!');
-}
-
-// Format Angka Ribuan
-function formatKM(num) {
-    return num.toLocaleString('id-ID');
-}
-
-// Render Seluruh Komponen Utama
-function render() {
-    // 1. Render Summary Odo
-    document.getElementById('summaryOdo').innerHTML = `${formatKM(currentOdo)} <small>KM</small>`;
-
-    let countGood = 0;
-    let countWarning = 0;
-    let countDanger = 0;
-
-    const container = document.getElementById('componentsContainer');
-    container.innerHTML = '';
-
-    // 2. Render Kartu Komponen
-    components.forEach(comp => {
-        const distanceUsed = Math.max(0, currentOdo - comp.lastReplacedKm);
-        const remainingKm = comp.interval - distanceUsed;
-        
-        let usedPercentage = Math.min(100, Math.max(0, Math.round((distanceUsed / comp.interval) * 100)));
-        let healthPercentage = 100 - usedPercentage;
-
-        let badgeHtml = '';
-        let fillClass = '';
-        let cardBorder = '';
-
-        // Klasifikasi Status (Hijau, Kuning, Merah)
-        if (remainingKm <= 0) {
-            countDanger++;
-            badgeHtml = `<span class="badge badge-red">Wajib Ganti</span>`;
-            fillClass = 'fill-red';
-            cardBorder = 'border-danger';
-        } else if (remainingKm <= comp.interval * 0.25) { // Sisa 25% atau kurang
-            countWarning++;
-            badgeHtml = `<span class="badge badge-amber">Persiapan</span>`;
-            fillClass = 'fill-amber';
-        } else {
-            countGood++;
-            badgeHtml = `<span class="badge badge-green">Aman</span>`;
-            fillClass = 'fill-green';
-        }
-
-        const card = document.createElement('div');
-        card.className = `comp-card ${cardBorder}`;
-        card.innerHTML = `
-            <div>
-                <div class="comp-header">
-                    <div class="comp-info">
-                        <div class="comp-icon">
-                            <i class="fa-solid ${comp.icon}"></i>
-                        </div>
-                        <div>
-                            <h4 class="comp-name">${comp.name}</h4>
-                            <span class="comp-interval">Interval: ${formatKM(comp.interval)} KM</span>
-                        </div>
-                    </div>
-                    ${badgeHtml}
-                </div>
-
-                <div class="progress-container">
-                    <div class="progress-info">
-                        <span>Kesehatan Part</span>
-                        <span class="font-bold">${healthPercentage}%</span>
-                    </div>
-                    <div class="progress-bg">
-                        <div class="progress-fill ${fillClass}" style="width: ${healthPercentage}%"></div>
-                    </div>
-                </div>
-
-                <div class="comp-footer-stats">
-                    <div>
-                        <span class="stat-sublabel">KM Terakhir Ganti</span>
-                        <span class="stat-subvalue">${formatKM(comp.lastReplacedKm)} KM</span>
-                    </div>
-                    <div style="text-align: right;">
-                        <span class="stat-sublabel">Sisa Jarak</span>
-                        <span class="stat-subvalue ${remainingKm <= 0 ? 'text-red' : 'text-green'}">
-                            ${remainingKm <= 0 ? 'Lewat ' + formatKM(Math.abs(remainingKm)) : formatKM(remainingKm)} KM
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <button onclick="openServiceModal('${comp.id}')" class="btn btn-action">
-                <i class="fa-solid fa-arrows-rotate"></i> Catat Penggantian
-            </button>
-        `;
-        container.appendChild(card);
-    });
-
-    // 3. Render Top Stats Counter
-    document.getElementById('summaryGood').innerHTML = `${countGood} <small>Part</small>`;
-    document.getElementById('summaryWarning').innerHTML = `${countWarning} <small>Part</small>`;
-    document.getElementById('summaryDanger').innerHTML = `${countDanger} <small>Part</small>`;
-
-    // 4. Render Table History
-    renderHistoryTable();
-}
-
-// Render Tabel Riwayat
-function renderHistoryTable() {
-    const tableBody = document.getElementById('historyTableBody');
-    tableBody.innerHTML = '';
-
-    if (historyLogs.length === 0) {
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">
-                    Belum ada riwayat penggantian part yang dicatat.
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    historyLogs.slice().reverse().forEach(log => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td style="color: var(--text-muted);">${log.date}</td>
-            <td style="font-weight: 700;">${log.partName}</td>
-            <td style="color: var(--primary-blue); font-weight: 600;">${formatKM(log.km)} KM</td>
-            <td style="color: var(--text-muted); font-size: 0.8rem;">${log.notes || '-'}</td>
-        `;
-        tableBody.appendChild(tr);
-    });
-}
-
-// Buka Modal Input Servis
-function openServiceModal(partId) {
-    const comp = components.find(c => c.id === partId);
-    if (!comp) return;
-
-    document.getElementById('modalPartId').value = comp.id;
-    document.getElementById('modalPartName').value = comp.name;
-    document.getElementById('modalPartKm').value = currentOdo;
-    document.getElementById('modalNotes').value = '';
-
-    document.getElementById('serviceModal').classList.add('active');
-}
-
-// Tutup Modal
-function closeServiceModal() {
-    document.getElementById('serviceModal').classList.remove('active');
-}
-
-// Handle Submit Modal Servis
-function handleServiceSubmit(event) {
-    event.preventDefault();
-
-    const partId = document.getElementById('modalPartId').value;
-    const kmVal = parseInt(document.getElementById('modalPartKm').value, 10);
-    const notes = document.getElementById('modalNotes').value.trim();
-
-    if (isNaN(kmVal) || kmVal < 0) {
-        showToast('KM penggantian tidak valid!', 'error');
-        return;
-    }
-
-    const compIndex = components.findIndex(c => c.id === partId);
-    if (compIndex !== -1) {
-        components[compIndex].lastReplacedKm = kmVal;
-
-        const now = new Date();
-        const formattedDate = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
-        
-        historyLogs.push({
-            date: formattedDate,
-            partName: components[compIndex].name,
-            km: kmVal,
-            notes: notes
-        });
-
-        // Update Odometer jika input KM servis lebih tinggi dari KM saat ini
-        if (kmVal > currentOdo) {
-            currentOdo = kmVal;
-            document.getElementById('currentOdoInput').value = currentOdo;
-        }
-
-        saveData();
-        render();
-        closeServiceModal();
-        showToast(`Status ${components[compIndex].name} berhasil diperbarui!`);
-    }
-}
-
-// Hapus Seluruh Riwayat
-function clearHistory() {
-    if (confirm('Apakah Anda yakin ingin menghapus seluruh riwayat servis?')) {
-        historyLogs = [];
-        saveData();
-        renderHistoryTable();
-        showToast('Riwayat servis telah dibersihkan.');
-    }
-}
-
-// Custom Toast Notification (Pengganti alert)
-function showToast(message, type = 'success') {
-    const container = document.getElementById('toastContainer');
-    const toast = document.createElement('div');
-    toast.className = 'toast';
+// Render Components Card List
+function renderComponents() {
+  componentContainer.innerHTML = '';
+  
+  components.forEach(comp => {
+    const kmUsed = odometer - comp.lastChangedKm;
+    const kmRemaining = comp.interval - kmUsed;
+    const percentage = Math.max(0, Math.min(100, Math.round(((comp.interval - kmUsed) / comp.interval) * 100)));
     
-    toast.innerHTML = `
-        <i class="fa-solid ${type === 'error' ? 'fa-circle-xmark' : 'fa-circle-check'} toast-icon"></i>
-        <span>${message}</span>
+    // Status color selection
+    let statusBg = 'bg-emerald-500';
+    let statusText = 'Sangat Baik';
+    let badgeBg = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+
+    if (kmRemaining <= 0) {
+      statusBg = 'bg-red-500';
+      statusText = 'Wajib Ganti!';
+      badgeBg = 'bg-red-500/10 text-red-400 border-red-500/20';
+    } else if (percentage <= 25) {
+      statusBg = 'bg-amber-500';
+      statusText = 'Segera Ganti';
+      badgeBg = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+    }
+
+    const card = document.createElement('div');
+    card.className = 'bg-gray-800 p-5 rounded-xl border border-gray-700 flex flex-col justify-between relative';
+    card.innerHTML = `
+      <div>
+        <div class="flex justify-between items-start mb-3">
+          <div>
+            <h3 class="font-bold text-lg text-white">${comp.name}</h3>
+            <span class="text-xs text-gray-400">Interval: tiap ${comp.interval.toLocaleString('id-ID')} KM</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-full text-xs font-semibold border ${badgeBg}">${statusText}</span>
+            <button onclick="deleteComponent('${comp.id}')" class="text-gray-500 hover:text-red-400 text-xs p-1" title="Hapus Komponen">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </div>
+        
+        <div class="mb-3">
+          <div class="flex justify-between text-xs font-semibold mb-1">
+            <span class="text-gray-400">Sisa Umur</span>
+            <span class="${kmRemaining <= 0 ? 'text-red-400 font-bold' : 'text-gray-200'}">
+              ${kmRemaining <= 0 ? 'Melewati batas ' + Math.abs(kmRemaining).toLocaleString('id-ID') + ' KM' : kmRemaining.toLocaleString('id-ID') + ' KM lagi'}
+            </span>
+          </div>
+          <div class="w-full bg-gray-900 rounded-full h-2.5 overflow-hidden">
+            <div class="${statusBg} h-2.5 rounded-full transition-all duration-300" style="width: ${percentage}%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-xs text-gray-400 border-t border-gray-700/50 pt-3 mt-1 flex justify-between">
+        <span>Terakhir diganti: <strong>${comp.lastChangedKm.toLocaleString('id-ID')} KM</strong></span>
+        <span>Terpakai: <strong>${Math.max(0, kmUsed).toLocaleString('id-ID')} KM</strong></span>
+      </div>
     `;
-
-    container.appendChild(toast);
-
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(10px)';
-        toast.style.transition = 'all 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    componentContainer.appendChild(card);
+  });
 }
 
-// Jalankan aplikasi saat window loaded
-window.onload = function() {
-    initApp();
-};
+// Delete Custom Component
+function deleteComponent(id) {
+  if (confirm('Yakin ingin menghapus komponen ini dari pemantauan?')) {
+    components = components.filter(c => c.id !== id);
+    localStorage.setItem('moto_components', JSON.stringify(components));
+    renderComponents();
+  }
+}
+
+// Render Service History Table
+function renderHistory() {
+  historyList.innerHTML = '';
+  if (history.length === 0) {
+    historyList.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-500">Belum ada riwayat penggantian.</td></tr>`;
+    return;
+  }
+  
+  history.slice().reverse().forEach(item => {
+    const row = document.createElement('tr');
+    row.className = 'hover:bg-gray-700/30';
+    row.innerHTML = `
+      <td class="py-3 px-4 text-gray-400">${item.date}</td>
+      <td class="py-3 px-4 font-semibold text-white">${item.compName}</td>
+      <td class="py-3 px-4">${parseInt(item.km).toLocaleString('id-ID')} KM</td>
+      <td class="py-3 px-4 text-gray-400">${item.note || '-'}</td>
+    `;
+    historyList.appendChild(row);
+  });
+}
+
+// Modal Control Event Listeners
+btnOpenAdd.addEventListener('click', () => modalAdd.classList.replace('hidden', 'flex'));
+btnOpenService.addEventListener('click', () => {
+  // Populate dropdown options
+  serviceCompSelect.innerHTML = components.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  document.getElementById('service-km').value = odometer;
+  modalService.classList.replace('hidden', 'flex');
+});
+
+document.querySelectorAll('.btn-close-modal').forEach(btn => {
+  btn.addEventListener('click', () => {
+    modalAdd.classList.replace('flex', 'hidden');
+    modalService.classList.replace('flex', 'hidden');
+  });
+});
+
+// Form Submit: Add New Component
+document.getElementById('form-add-component').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = document.getElementById('new-comp-name').value;
+  const interval = parseInt(document.getElementById('new-comp-interval').value);
+  const lastKm = parseInt(document.getElementById('new-comp-last-km').value);
+
+  const newComp = {
+    id: Date.now().toString(),
+    name: name,
+    interval: interval,
+    lastChangedKm: lastKm
+  };
+
+  components.push(newComp);
+  localStorage.setItem('moto_components', JSON.stringify(components));
+  renderComponents();
+  
+  e.target.reset();
+  modalAdd.classList.replace('flex', 'hidden');
+});
+
+// Form Submit: Record Service Replacement
+document.getElementById('form-service').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const compId = serviceCompSelect.value;
+  const km = parseInt(document.getElementById('service-km').value);
+  const note = document.getElementById('service-note').value;
+
+  const targetComp = components.find(c => c.id === compId);
+  if (targetComp) {
+    targetComp.lastChangedKm = km;
+    localStorage.setItem('moto_components', JSON.stringify(components));
+    
+    // Add to history
+    const historyItem = {
+      date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+      compName: targetComp.name,
+      km: km,
+      note: note
+    };
+    history.push(historyItem);
+    localStorage.setItem('moto_history', JSON.stringify(history));
+
+    // Auto update current odo if service KM is higher
+    if (km > odometer) {
+      odometer = km;
+      currentOdoInput.value = odometer;
+      localStorage.setItem('moto_odo', odometer);
+    }
+
+    renderComponents();
+    renderHistory();
+  }
+
+  e.target.reset();
+  modalService.classList.replace('flex', 'hidden');
+});
