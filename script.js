@@ -26,6 +26,14 @@ const btnOpenAdd = document.getElementById('btn-open-add-modal');
 const btnOpenService = document.getElementById('btn-open-service-modal');
 const serviceCompSelect = document.getElementById('service-comp-select');
 
+// Helper Close All Modals
+function closeAllModals() {
+  modalAdd.classList.add('hidden');
+  modalAdd.classList.remove('flex');
+  modalService.classList.add('hidden');
+  modalService.classList.remove('flex');
+}
+
 // Initial Load
 currentOdoInput.value = odometer;
 renderComponents();
@@ -50,7 +58,6 @@ function renderComponents() {
     const kmRemaining = comp.interval - kmUsed;
     const percentage = Math.max(0, Math.min(100, Math.round(((comp.interval - kmUsed) / comp.interval) * 100)));
     
-    // Status color selection
     let statusBg = 'bg-emerald-500';
     let statusText = 'Sangat Baik';
     let badgeBg = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
@@ -76,8 +83,8 @@ function renderComponents() {
           </div>
           <div class="flex items-center gap-2">
             <span class="px-2.5 py-1 rounded-full text-xs font-semibold border ${badgeBg}">${statusText}</span>
-            <button onclick="deleteComponent('${comp.id}')" class="text-gray-500 hover:text-red-400 text-xs p-1" title="Hapus Komponen">
-              <i class="fa-solid fa-trash"></i>
+            <button data-id="${comp.id}" class="btn-delete-comp text-gray-500 hover:text-red-400 text-xs p-1" title="Hapus Komponen">
+              <i class="fa-solid fa-trash pointer-events-none"></i>
             </button>
           </div>
         </div>
@@ -101,6 +108,14 @@ function renderComponents() {
       </div>
     `;
     componentContainer.appendChild(card);
+  });
+
+  // Attach event listener to delete buttons
+  document.querySelectorAll('.btn-delete-comp').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.currentTarget.getAttribute('data-id');
+      deleteComponent(id);
+    });
   });
 }
 
@@ -135,19 +150,20 @@ function renderHistory() {
 }
 
 // Modal Control Event Listeners
-btnOpenAdd.addEventListener('click', () => modalAdd.classList.replace('hidden', 'flex'));
+btnOpenAdd.addEventListener('click', () => {
+  modalAdd.classList.remove('hidden');
+  modalAdd.classList.add('flex');
+});
+
 btnOpenService.addEventListener('click', () => {
-  // Populate dropdown options
   serviceCompSelect.innerHTML = components.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
   document.getElementById('service-km').value = odometer;
-  modalService.classList.replace('hidden', 'flex');
+  modalService.classList.remove('hidden');
+  modalService.classList.add('flex');
 });
 
 document.querySelectorAll('.btn-close-modal').forEach(btn => {
-  btn.addEventListener('click', () => {
-    modalAdd.classList.replace('flex', 'hidden');
-    modalService.classList.replace('flex', 'hidden');
-  });
+  btn.addEventListener('click', closeAllModals);
 });
 
 // Form Submit: Add New Component
@@ -169,7 +185,7 @@ document.getElementById('form-add-component').addEventListener('submit', (e) => 
   renderComponents();
   
   e.target.reset();
-  modalAdd.classList.replace('flex', 'hidden');
+  closeAllModals();
 });
 
 // Form Submit: Record Service Replacement
@@ -184,7 +200,6 @@ document.getElementById('form-service').addEventListener('submit', (e) => {
     targetComp.lastChangedKm = km;
     localStorage.setItem('moto_components', JSON.stringify(components));
     
-    // Add to history
     const historyItem = {
       date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
       compName: targetComp.name,
@@ -194,17 +209,7 @@ document.getElementById('form-service').addEventListener('submit', (e) => {
     history.push(historyItem);
     localStorage.setItem('moto_history', JSON.stringify(history));
 
-    // Auto update current odo if service KM is higher
     if (km > odometer) {
       odometer = km;
       currentOdoInput.value = odometer;
       localStorage.setItem('moto_odo', odometer);
-    }
-
-    renderComponents();
-    renderHistory();
-  }
-
-  e.target.reset();
-  modalService.classList.replace('flex', 'hidden');
-});
